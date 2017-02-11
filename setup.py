@@ -44,6 +44,8 @@ KEYWORDS = "microservice service gemstone jsonrpc rpc http asynchronous async to
 DESCRIPTION = "A tool for easily managing gemstone microservices."
 LICENSE = "MIT"
 
+DEPENDENCIES = ["gemstone", "click", "colorama"]
+
 module_content = get_file_content(os.path.join("gemstone_admin", "__init__.py"))
 
 readme = get_file_content("README.rst")
@@ -76,7 +78,7 @@ setup(
     # tests
     test_suite="tests",
 
-    install_requires=read_dependencies("requirements.txt"),
+    install_requires=DEPENDENCIES,
 
     entry_points={
         "console_scripts": [
