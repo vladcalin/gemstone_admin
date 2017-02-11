@@ -1,3 +1,4 @@
 gemstone
 click
 colorama
+tabulate

@@ -44,7 +44,7 @@ KEYWORDS = "microservice service gemstone jsonrpc rpc http asynchronous async to
 DESCRIPTION = "A tool for easily managing gemstone microservices."
 LICENSE = "MIT"
 
-DEPENDENCIES = ["gemstone", "click", "colorama"]
+DEPENDENCIES = ["gemstone", "click", "colorama", "tabulate"]
 
 module_content = get_file_content(os.path.join("gemstone_admin", "__init__.py"))
 

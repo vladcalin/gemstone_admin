@@ -1,0 +1,24 @@
+{
+    "metadata": {
+        "name": "myservice",
+        "version": "1.0.0",
+        "description": "test"
+    },
+    "install": [
+        "pip install myservice"
+    ],
+    "uninstall": [
+        "pip uninstall myservice"
+    ],
+    "start": [
+        "{{default.python}} -m myservice start --port={{env.port}} --host={{env.host}} --registry={{env.registry}}"
+    ],
+    "stop": [
+        "pkill {{runtime.pid}}"
+    ],
+    "environment": {
+        "port": "random",
+        "registry": null,
+        "host": "127.0.0.1"
+    }
+}
