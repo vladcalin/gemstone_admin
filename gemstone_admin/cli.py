@@ -1,15 +1,21 @@
 import os.path
 import uuid
 import urllib.parse
-import configparser
+import subprocess
+import sys
+import datetime
 
 import tabulate
 import click
 import simplejson as json
 
-from gemstone_admin.install import ServiceSpecsFileParser
+from gemstone_admin.structs import Service
 
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".gemstone_admin")
+GEMSTONE_DIR = os.path.join(os.path.expanduser("~"), ".gemstone")
+CONFIG_FILE = os.path.join(GEMSTONE_DIR, ".admin")
+
+if not os.path.isdir(GEMSTONE_DIR):
+    os.mkdir(GEMSTONE_DIR)
 
 if not os.path.isfile(CONFIG_FILE):
     with open(CONFIG_FILE, "w") as f:
@@ -48,8 +54,17 @@ def extract_name_from_source(source):
     return os.path.split(parsed.path)[-1].split(".")[-1]
 
 
-def register_service(name, source):
-    raise NotImplementedError()
+def register_service(service):
+    data = {
+        "install_source": service.install_source,
+        "module_name": service.name,
+        "service_module": service.service_module,
+        "id": service.id
+    }
+    current_config = read_config_file()
+    current_config["installed"][service.id] = data
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(current_config, f)
 
 
 @click.group()
@@ -72,22 +87,38 @@ def instance():
     pass
 
 
+@click.command("reset")
+def reset():
+    os.remove(CONFIG_FILE)
+
+
 cli.add_command(config)
 cli.add_command(service)
 cli.add_command(instance)
+cli.add_command(reset)
 
 
 # region service
 
 @click.command("install", help="Installs a service from the given source")
-@click.argument("install_file")
-def service_install(install_file):
-    click.echo("Installing from {}".format(install_file))
+@click.argument("install_source")
+@click.option("--module_name", default=None)
+def service_install(install_source, module_name):
+    click.echo("Installing from {}".format(install_source))
 
-    config = ServiceSpecsFileParser(install_file, get_global_value=get_value_from_config,
-                                    get_global_keys=get_keys_from_config)
+    if not module_name:
+        click.echo("No name specified. Assuming {}".format(install_source))
+        module_name = install_source
 
-    click.echo(click.style("Finished", fg="green"))
+    click.echo("Module name: {}".format(module_name))
+    click.echo("Service module: {}.service".format(module_name))
+
+    service = Service(module_name, install_source)
+    if service.install():
+        register_service(service)
+        click.echo(click.style("Finished", fg="green"))
+    else:
+        click.echo(click.style(service.info, fg="red"))
 
 
 @click.command("uninstall", help="Uninstalls a service")
@@ -98,7 +129,12 @@ def service_uninstall(name):
 
 @click.command("list", help="Lists all installed services")
 def service_list():
-    pass
+    current_config = read_config_file()
+    service_data = []
+    for service_id, values in current_config["installed"].items():
+        service_data.append([service_id, values["module_name"], values["service_module"], values["install_source"]])
+    click.echo(
+        tabulate.tabulate(service_data, headers=("Id", "Name", "Service module", "Install source")))
 
 
 service.add_command(service_install)
@@ -134,7 +170,7 @@ def list_config():
     for k, v in current_config["env"].items():
         items.append((k, v))
     items.sort(key=lambda x: x[0])
-    print(tabulate.tabulate(items, headers=["Key", "Value"], tablefmt="grid"))
+    print(tabulate.tabulate(items, headers=["Key", "Value"]))
 
 
 config.add_command(write_config)

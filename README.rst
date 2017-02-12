@@ -3,14 +3,10 @@ gemstone_admin - easy managment for microservices
 
 A tool for easily managing gemstone microservices.
 
-A microservice is managed through a YAML file that contains:
+For a service to be manageable through this tool, it must:
 
-- the installation commands
-- the uninstall commands
-- the start commands
-- the stop commands
-- used configuration keys and their defaults
-- certain flags
+- be packaged as a python module (let's assume its name is A)
+- must have a A.service module that when is executed, uses the `gemstone.MicroService.get_cli()` to start the service
 
 
 Installing a service
@@ -18,8 +14,8 @@ Installing a service
 
 ::
 
-    gemstone_admin install myservice.ini
-    # this file contains information about the microservice to be installed
+    gemstone_admin install myservice
+    gemstone_admin install myservice --module_name=importable_name
 
 Listing available installed microservices
 -----------------------------------------
