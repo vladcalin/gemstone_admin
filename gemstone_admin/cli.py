@@ -4,12 +4,14 @@ import urllib.parse
 import subprocess
 import sys
 import datetime
+import pickle
+import base64
 
 import tabulate
 import click
 import simplejson as json
 
-from gemstone_admin.structs import Service
+from gemstone_admin.structs import Service, Configuration
 
 GEMSTONE_DIR = os.path.join(os.path.expanduser("~"), ".gemstone")
 CONFIG_FILE = os.path.join(GEMSTONE_DIR, ".admin")
@@ -23,48 +25,29 @@ if not os.path.isfile(CONFIG_FILE):
 
 
 def read_config_file():
-    with open(CONFIG_FILE, "r") as f:
-        data = f.read()
-        if not data:
-            current_config = {"env": {}, "installed": {}, "running": {}}
-        else:
-            current_config = json.loads(data)
-    return current_config
+    return Configuration.from_file(CONFIG_FILE)
 
 
 def modify_env_value(key, value):
     current_config = read_config_file()
-    current_config["env"][key] = value
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(current_config, f)
+    current_config.add_env_value(key, value)
+    current_config.save_to_file(CONFIG_FILE)
 
 
 def get_value_from_config(key):
     current_config = read_config_file()
-    return current_config["env"].get(key, None)
+    return current_config.get_env_value(key)
 
 
 def get_keys_from_config():
     current_config = read_config_file()
-    return list(current_config["env"].keys())
-
-
-def extract_name_from_source(source):
-    parsed = urllib.parse.urlparse(source)
-    return os.path.split(parsed.path)[-1].split(".")[-1]
+    return current_config.list_env_keys()
 
 
 def register_service(service):
-    data = {
-        "install_source": service.install_source,
-        "module_name": service.name,
-        "service_module": service.service_module,
-        "id": service.id
-    }
     current_config = read_config_file()
-    current_config["installed"][service.id] = data
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(current_config, f)
+    current_config.add_service(service)
+    current_config.save_to_file(CONFIG_FILE)
 
 
 @click.group()
@@ -131,10 +114,12 @@ def service_uninstall(name):
 def service_list():
     current_config = read_config_file()
     service_data = []
-    for service_id, values in current_config["installed"].items():
-        service_data.append([service_id, values["module_name"], values["service_module"], values["install_source"]])
+    for service in current_config.iter_services():
+        service_data.append(
+            [service.id, service.name, service.service_module, service.config_module, service.install_source])
+
     click.echo(
-        tabulate.tabulate(service_data, headers=("Id", "Name", "Service module", "Install source")))
+        tabulate.tabulate(service_data, headers=("Id", "Name", "Service module", "Config module", "Install source")))
 
 
 service.add_command(service_install)
@@ -167,8 +152,8 @@ def read_config(key):
 def list_config():
     current_config = read_config_file()
     items = []
-    for k, v in current_config["env"].items():
-        items.append((k, v))
+    for k in current_config.list_env_keys():
+        items.append((k, current_config.get_env_value(k)))
     items.sort(key=lambda x: x[0])
     print(tabulate.tabulate(items, headers=["Key", "Value"]))
 
