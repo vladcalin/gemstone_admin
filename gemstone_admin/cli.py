@@ -1,13 +1,13 @@
 import os.path
-import sys
-import subprocess
 import uuid
 import urllib.parse
+import configparser
 
 import tabulate
 import click
 import simplejson as json
-import yaml
+
+from gemstone_admin.install import ServiceSpecsFileParser
 
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".gemstone_admin")
 
@@ -36,6 +36,11 @@ def modify_env_value(key, value):
 def get_value_from_config(key):
     current_config = read_config_file()
     return current_config["env"].get(key, None)
+
+
+def get_keys_from_config():
+    current_config = read_config_file()
+    return list(current_config["env"].keys())
 
 
 def extract_name_from_source(source):
@@ -79,10 +84,8 @@ cli.add_command(instance)
 def service_install(install_file):
     click.echo("Installing from {}".format(install_file))
 
-    with open(install_file) as f:
-        config = yaml.load(f)
-
-    print(config)
+    config = ServiceSpecsFileParser(install_file, get_global_value=get_value_from_config,
+                                    get_global_keys=get_keys_from_config)
 
     click.echo(click.style("Finished", fg="green"))
 
